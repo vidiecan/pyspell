@@ -1,0 +1,104 @@
+# verzia: 2.03-1, 2009-12-19
+SET UTF-8
+TRY aoeintsvrlkmdpuhjzácbyčžíšýúťéľôďgfňäóŕxĺwěřqůAOEINTSVRLKMDPUHJZÁCBYČŽÍŠÝÚŤÉĽÔĎGFŇÄÓŔXĹWĚŘQŮ
+
+# replacenment table for
+# - multicharacter suggestions
+# - well-sorted suggestions 
+
+PFX N Y 1     # predpona ne-
+PFX N   0           ne         .
+
+SFX Y Y 92
+SFX Y   y           e          y
+SFX Y   y           a          y
+SFX Y   y           i          y
+SFX Y   y           o          y
+SFX Y   y           eho        y
+SFX Y   y           ej         y
+SFX Y   y           ych        y
+SFX Y   y           emu        y
+SFX Y   y           ym         y
+SFX Y   y           u          y
+SFX Y   y           om         y
+SFX Y   y           ou         y
+SFX Y   y           ymi        y
+SFX Y   y           ejšie      [klntv]y
+SFX Y   y           ejšia      [klntv]y
+SFX Y   y           ejší       [klntv]y
+SFX Y   y           ejšieho    [klntv]y
+SFX Y   y           ejšej      [klntv]y
+SFX Y   y           ejších     [klntv]y
+SFX Y   y           ejšiemu    [klntv]y
+SFX Y   y           ejšej      [klntv]y
+SFX Y   y           ejším      [klntv]y
+SFX Y   y           ejšiu      [klntv]y
+SFX Y   y           ejších     [klntv]y
+SFX Y   y           ejšom      [klntv]y
+SFX Y   y           ejším      [klntv]y
+SFX Y   y           ejšou      [klntv]y
+SFX Y   y           ejšími     [klntv]y
+SFX Y   ý           í          ý
+SFX Y   ý           é          ý
+SFX Y   ý           á          ý
+SFX Y   ý           ého        ý
+SFX Y   ý           ej         ý
+SFX Y   ý           ých        ý
+SFX Y   ý           ému        ý
+SFX Y   ý           ej         ý
+SFX Y   ý           ým         ý
+SFX Y   ý           ú          ý
+SFX Y   ý           om         ý
+SFX Y   ý           ou         ý
+SFX Y   ý           ými        ý
+SFX Y   ý           ejšie      [kntv]ý
+SFX Y   ý           ejšia      [kntv]ý
+SFX Y   ý           ejší       [kntv]ý
+SFX Y   ý           ejšieho    [kntv]ý
+SFX Y   ý           ejšej      [kntv]ý
+SFX Y   ý           ejších     [kntv]ý
+SFX Y   ý           ejšiemu    [kntv]ý
+SFX Y   ý           ejšej      [kntv]ý
+SFX Y   ý           ejším      [kntv]ý
+SFX Y   ý           ejšiu      [kntv]ý
+SFX Y   ý           ejších     [kntv]ý
+SFX Y   ý           ejšom      [kntv]ý
+SFX Y   ý           ejším      [kntv]ý
+SFX Y   ý           ejšou      [kntv]ý
+SFX Y   ý           ejšími     [kntv]ý
+SFX Y   ý           šie        [dh]ý
+SFX Y   ý           šia        [dh]ý
+SFX Y   ý           ší         [dh]ý
+SFX Y   ý           šieho      [dh]ý
+SFX Y   ý           šej        [dh]ý
+SFX Y   ý           ších       [dh]ý
+SFX Y   ý           šiemu      [dh]ý
+SFX Y   ý           šej        [dh]ý
+SFX Y   ý           ším        [dh]ý
+SFX Y   ý           šiu        [dh]ý
+SFX Y   ý           ších       [dh]ý
+SFX Y   ý           šom        [dh]ý
+SFX Y   ý           ším        [dh]ý
+SFX Y   ý           šou        [dh]ý
+SFX Y   ý           šími       [dh]ý
+SFX Y   á           é          á     # gazdiná
+SFX Y   á           ej         á
+SFX Y   á           ú          á
+SFX Y   á           ou         á
+SFX Y   á           ých        [^iv]ná
+SFX Y   á           ým         [^iv]ná
+SFX Y   á           ými        [^iv]ná
+SFX Y   ná          ien        [^i]ná
+SFX Y   iná         ín         iná
+SFX Y   á           ách        iná     # švarginá
+SFX Y   á           ám         iná
+SFX Y   á           ami        iná
+SFX Y   á           ách        vná     # kráľovná
+SFX Y   á           ám         vná
+SFX Y   á           ami        vná
+SFX Y   0           ho         é     # skladné
+SFX Y   0           mu         é
+SFX Y   é           om         é 
+SFX Y   é           ým         é
+SFX Y   é           ých        é
+SFX Y   é           ými        é

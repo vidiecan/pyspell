@@ -1,0 +1,18 @@
+{
+  "start_dir": ".",
+  "src_dir": "src",
+  "input": {
+    "dir": "data",
+    "dictionaries": "hunspell-sk-20110228.sk_SK",
+    "wiki_xml": "skwiki-20151226-pages-articles.xml"
+  },
+  "output": {
+    "dir": "data",
+    "wiki_words": "wiki-words.txt",
+    "wiki_freqs": "wiki-freqs.txt"
+  },
+  "temp": {
+    "dir": "__output",
+    "wiki_not_found": "pyspell.bad"
+  }
+}

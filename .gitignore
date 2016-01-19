@@ -1,0 +1,5 @@
+*.pyc
+.idea
+__output
+__temp
+data
