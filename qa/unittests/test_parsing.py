@@ -16,8 +16,10 @@ class test_parsing( test.test_case ):
 
     def test_dic_parsing( self ):
         """ test_dic_parsing """
+        from pyspell.aff import aff_mgr
         from pyspell.dic import dic_mgr
-        dic = dic_mgr(self.dic_file(), lambda x: x)
+        aff = aff_mgr(self.aff_file())
+        dic = dic_mgr(self.dic_file(), aff)
         dic.parse()
 
     def test_inspect( self ):

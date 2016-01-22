@@ -16,6 +16,13 @@ class test_spelling( test.test_case ):
         )
         s.init()
 
+        #
+        for word in (
+            u"dier",
+            u"ciev",
+        ):
+            self.assertTrue(s.check(word))
+
         with codecs.open(self.dic_file(), mode="r+", encoding="utf-8") as fin:
             fin.next()
             for i, l in enumerate(fin):
@@ -117,7 +124,9 @@ class test_spelling( test.test_case ):
             for word in fin_results:
                 bad_expected.add(word.strip())
         diff1 = bad_expected - bad
+        print diff1
         self.assertTrue(0 == len(diff1))
         diff2 = bad - bad_expected
+        print diff2
         self.assertTrue(0 == len(diff2))
 

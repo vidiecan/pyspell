@@ -27,8 +27,8 @@ class aff_mgr( object ):
         self._reps = { }
         self._pfxs = { }
         self._sfxs = { }
-        self._sfxs_rules = defaultdict(list)
-        self._pfxs_rules = defaultdict(list)
+        self._sfxs_rules = {}
+        self._pfxs_rules = {}
         self._breaks = []
         self._needaffix = None
         self._flagdecoder = decode_default
@@ -77,35 +77,34 @@ class aff_mgr( object ):
         for sfx_key, sfx_entry in self.sfxs():
             for sfx in sfx_entry["rules"]:
                 if 0 == len(sfx["with"]):
-                    self._sfxs_rules[""].append(sfx)
+                    self._sfxs_rules.setdefault("", []).append(sfx)
                 else:
-                    self._sfxs_rules[sfx["with"][-1]].append(sfx)
+                    aff_mgr._assign_trie_like(self._sfxs_rules, sfx["with"][::-1], sfx)
         return
 
     @staticmethod
     def _assign_trie_like(d, key, value):
         if 0 == len(key):
             d.setdefault("", []).append(value)
-        v = d.setdefault(key[0], {})
-        aff_mgr._assign_trie_like(v, key[1:], value)
+        else:
+            v = d.setdefault(key[0], {})
+            aff_mgr._assign_trie_like(v, key[1:], value)
 
     @staticmethod
     def _get_values_trie_like(d, key, ret):
-        if 0 == len(key):
+        if 0 != len(key):
             if "" in d:
-                ret.append(d[""])
-        else:
+                ret += d[""]
             if key[0] in d:
                 aff_mgr._get_values_trie_like(d[key[0]], key[1:], ret)
-
 
     def pfxs_rules_for_search(self):
         for pfx_key, pfx_entry in self.pfxs():
             for pfx in pfx_entry["rules"]:
                 if 0 == len(pfx["with"]):
-                    self._pfxs_rules[""].append(pfx)
+                    self._pfxs_rules.setdefault("", []).append(pfx)
                 else:
-                    self._pfxs_rules[pfx["with"][0]].append(pfx)
+                    aff_mgr._assign_trie_like(self._pfxs_rules, pfx["with"], pfx)
         return
 
     def remove_ignore(self, l):
@@ -119,8 +118,7 @@ class aff_mgr( object ):
 
     def sfxs_rules(self, word_filter):
         ret = []
-        ret += self._sfxs_rules[""]
-        ret += self._sfxs_rules[word_filter[-1]]
+        self._get_values_trie_like(self._sfxs_rules, word_filter[::-1], ret)
         return ret
 
     def pfxs(self):
@@ -128,8 +126,7 @@ class aff_mgr( object ):
 
     def pfxs_rules(self, word_filter):
         ret = []
-        ret += self._pfxs_rules[""]
-        ret += self._pfxs_rules[word_filter[0]]
+        self._get_values_trie_like(self._pfxs_rules, word_filter, ret)
         return ret
 
     def get_sfx(self, key):
@@ -180,11 +177,10 @@ class aff_mgr( object ):
     def remove_suffix(word, sfx, fullstrip=1):
         with_sz = len(sfx["with"])
         if len(word) + fullstrip > with_sz:
-            if 0 == with_sz or word[-with_sz:] == sfx["with"]:
-                if 0 < with_sz:
-                    return word[:-with_sz] + sfx["replace"]
-                else:
-                    return word + sfx["replace"]
+            if 0 == with_sz:
+                return word + sfx["replace"]
+            elif word[-with_sz:] == sfx["with"]:
+                return word[:-with_sz] + sfx["replace"]
         return None
 
     # ======================

@@ -1,2 +1,2 @@
-python do.py --unknown-from-wiki
+python -OO do.py --unknown-from-wiki
 pause
