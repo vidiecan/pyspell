@@ -390,4 +390,4 @@ if __name__ == "__main__":
     what_to_do(env)
 
     lasted = time.time( ) - lasted
-    _logger.info( "Finished in [%d]s...", lasted )
+    _logger.info( "Finished in [%.3fs]...", lasted )

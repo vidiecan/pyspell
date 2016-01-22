@@ -5,10 +5,11 @@ import re
 
 
 def line_strip(line):
-    line = line.strip( )
-    parts = line.split( "#", 1 )
-    if 3 > len( parts ):
-        return parts[0]
+    line = line.rstrip( )
+    # faster than .rfind()
+    if "#" in line:
+        pos = line.rfind("#")
+        return line[:pos]
     return line
 
 

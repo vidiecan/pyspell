@@ -19,55 +19,36 @@ class speller(object):
         self._dic.parse()
 
     def AffixMgr_suffix_check(self, word, pfx_key=None):
-        for sfx_key, sfx_entry in self._aff.sfxs().iteritems():
-            for sfx in sfx_entry["rules"]:
-                if 0 == len(sfx["replace"]):
-                    for newword in self._aff.remove_suffix(word, sfx):
-                        if sfx["condition"].search(newword):
-                            word_ds = self._dic.get(newword, [])
-                            for word_d in word_ds:
-                                if sfx_key in word_d["affixes"]:
-                                    if pfx_key is None or pfx_key in word_d["affixes"]:
-                                        return newword
-
-        for sfx_key, sfx_entry in self._aff.sfxs().iteritems():
-            for sfx in sfx_entry["rules"]:
-                if 0 != len(sfx["replace"]):
-                    for newword in self._aff.remove_suffix(word, sfx):
-                        assert len(newword) != 0
-                        if sfx["condition"].search(newword):
-                            word_ds = self._dic.get(newword, [])
-                            for word_d in word_ds:
-                                if sfx_key in word_d["affixes"]:
-                                    if pfx_key is None or pfx_key in word_d["affixes"]:
-                                        return newword
-
+        for sfx in self._aff.sfxs_rules(word):
+            newword = aff_mgr.remove_suffix(word, sfx)
+            if newword is None:
+                continue
+            if sfx["condition"].search(newword):
+                word_ds = self._dic.get(newword, None)
+                if word_ds is None:
+                    continue
+                if dic_mgr.has_affixes(word_ds, (sfx["aflag"], pfx_key)):
+                    return newword
         return None
 
     def AffixMgr_prefix_check(self, word):
-        for pfx_key, pfx_entry in self._aff.pfxs().iteritems():
-            for pfx in pfx_entry["rules"]:
-                if 0 == len(pfx["replace"]):
-                    for newword in self._aff.remove_prefix(word, pfx):
-                        word_ds = self._dic.get(newword, [])
-                        for word_d in word_ds:
-                            if pfx_key in word_d["affixes"]:
-                                return newword
-                        if pfx_entry["combined"]:
-                            accepted_word = self.AffixMgr_suffix_check(newword, pfx_key)
-                            if accepted_word is not None:
-                                return accepted_word
-
-        #
-        for pfx_key, pfx_entry in self._aff.pfxs().iteritems():
-            for pfx in pfx_entry["rules"]:
-                if 0 != len(pfx["replace"]):
-                    if word.startswith(pfx["replace"]):
-                        for newword in self._aff.remove_prefix(word, pfx):
-                            word_ds = self._dic.get(newword, [])
-                            for word_d in word_ds:
-                                if pfx_key in word_d["affixes"]:
-                                    return newword
+        for pfx in self._aff.pfxs_rules(word):
+            repl_sz = len(pfx["replace"])
+            if 0 != repl_sz and word[:repl_sz] == pfx["replace"]:
+                continue
+            newword = aff_mgr.remove_prefix(word, pfx)
+            if newword is None:
+                continue
+            if pfx["condition"].search(newword):
+                word_ds = self._dic.get(newword, None)
+                if word_ds is not None:
+                    if dic_mgr.has_affixes(word_ds, (pfx["aflag"],)):
+                        return newword
+                if "not_combine" in pfx:
+                    continue
+                accepted_word = self.AffixMgr_suffix_check(newword, pfx["aflag"])
+                if accepted_word is not None:
+                    return accepted_word
         return None
 
     def check(self, word, ignorecase=False):
@@ -107,10 +88,34 @@ class speller(object):
         import operator
         sorted_d = sorted(d.items(), key=operator.itemgetter(1), reverse=True)
         for k, v in sorted_d:
-            outputter(u"%4s: %d" % (unichr(k), v))
-        for fx in self._aff.sfxs().keys():
-            if fx not in d:
-                outputter(u"SFX not used [%s]" % (unichr(fx)))
-        for fx in self._aff.pfxs().keys():
-            if fx not in d:
-                outputter(u"PFX not used [%s]" % (unichr(fx)))
+            outputter(u"%4s: %d" % (k, v))
+        for fx_key, fx_entry in self._aff.sfxs():
+            if fx_key not in d:
+                outputter(u"SFX not used [%s]" % fx_key)
+            else:
+                for fx in fx_entry["rules"]:
+                    if len(fx["replace"]) > 0:
+                        p = fx["condition"].pattern
+                        if p[-1] == u"$":
+                            p = p[:-1]
+                        else:
+                            continue
+                        if fx["replace"][-1] != p[-1]:
+                            outputter(
+                                    u"invalid SFX replace [%s] - does not match condition [%s]" % (
+                                        fx["replace"], fx["condition"].pattern
+                                    )
+                            )
+        for fx_key, fx_entry in self._aff.pfxs():
+            if fx_key not in d:
+                outputter(u"PFX not used [%s]" % fx_key)
+            else:
+                for fx in fx_entry["rules"]:
+                    if len(fx["replace"]) > 0:
+                        p = fx["condition"].pattern
+                        if fx["replace"][0] != p[0]:
+                            outputter(
+                                    u"invalid PFX replace [%s] - does not match condition [%s]" % (
+                                        fx["replace"], fx["condition"].pattern
+                                    )
+                            )

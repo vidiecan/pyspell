@@ -5,10 +5,13 @@ import codecs
 import os
 import re
 from ._utils import missing_file, not_implemented_yet, deprecated, invalid_format, line_strip
+from collections import defaultdict
 
 
 def decode_default(x):
-    return [ord(c) for c in x]
+    return x
+    #return map(ord, x)
+    #return [ord(c) for c in x]
 
 
 # noinspection PyMethodMayBeStatic
@@ -24,6 +27,8 @@ class aff_mgr( object ):
         self._reps = { }
         self._pfxs = { }
         self._sfxs = { }
+        self._sfxs_rules = defaultdict(list)
+        self._pfxs_rules = defaultdict(list)
         self._breaks = []
         self._needaffix = None
         self._flagdecoder = decode_default
@@ -47,7 +52,7 @@ class aff_mgr( object ):
                     getattr( self, meth )( first[1], fin )
 
                 else:
-                    if 0 == len(first) or 0 == len(first[0]) or first[0].startswith("#"):
+                    if 0 == len(first) or 0 == len(first[0]) or first[0][0] == "#":
                         continue
 
                     # several keywords
@@ -57,10 +62,51 @@ class aff_mgr( object ):
                         raise not_implemented_yet( "I do not know CHECKCOMPOUND*" )
 
                     raise not_implemented_yet( "I do not know [%s]" % first[0] )
+            # seems that this is faster than arbitrary order
+            from collections import OrderedDict
+            self._sfxs = OrderedDict(sorted(self._sfxs.items(), key=lambda t: len(t[1]["rules"])))
+            self._pfxs = OrderedDict(sorted(self._pfxs.items(), key=lambda t: len(t[1]["rules"])))
             # we can optimise search by grouping similar prefixes
+            self.pfxs_rules_for_search()
+            self.sfxs_rules_for_search()
 
     def __str__(self):
         return "%s (#pfxs:%d #sfxs:%d)" % (self.__class__, len( self._pfxs ), len( self._sfxs ))
+
+    def sfxs_rules_for_search(self):
+        for sfx_key, sfx_entry in self.sfxs():
+            for sfx in sfx_entry["rules"]:
+                if 0 == len(sfx["with"]):
+                    self._sfxs_rules[""].append(sfx)
+                else:
+                    self._sfxs_rules[sfx["with"][-1]].append(sfx)
+        return
+
+    @staticmethod
+    def _assign_trie_like(d, key, value):
+        if 0 == len(key):
+            d.setdefault("", []).append(value)
+        v = d.setdefault(key[0], {})
+        aff_mgr._assign_trie_like(v, key[1:], value)
+
+    @staticmethod
+    def _get_values_trie_like(d, key, ret):
+        if 0 == len(key):
+            if "" in d:
+                ret.append(d[""])
+        else:
+            if key[0] in d:
+                aff_mgr._get_values_trie_like(d[key[0]], key[1:], ret)
+
+
+    def pfxs_rules_for_search(self):
+        for pfx_key, pfx_entry in self.pfxs():
+            for pfx in pfx_entry["rules"]:
+                if 0 == len(pfx["with"]):
+                    self._pfxs_rules[""].append(pfx)
+                else:
+                    self._pfxs_rules[pfx["with"][0]].append(pfx)
+        return
 
     def remove_ignore(self, l):
         if 0 == len( self._ignore ):
@@ -69,10 +115,22 @@ class aff_mgr( object ):
         return l.translate( translation_table )
 
     def sfxs(self):
-        return self._sfxs
+        return self._sfxs.iteritems()
+
+    def sfxs_rules(self, word_filter):
+        ret = []
+        ret += self._sfxs_rules[""]
+        ret += self._sfxs_rules[word_filter[-1]]
+        return ret
 
     def pfxs(self):
-        return self._pfxs
+        return self._pfxs.iteritems()
+
+    def pfxs_rules(self, word_filter):
+        ret = []
+        ret += self._pfxs_rules[""]
+        ret += self._pfxs_rules[word_filter[0]]
+        return ret
 
     def get_sfx(self, key):
         return self._sfxs.get(key, None)
@@ -109,24 +167,25 @@ class aff_mgr( object ):
 
     @staticmethod
     def remove_prefix(word, pfx, fullstrip=1):
-        sz = len(word)
         with_sz = len(pfx["with"])
-        # check this !!!
-        if sz + fullstrip > with_sz:
-            if word.startswith(pfx["with"]):
-                yield pfx["replace"] + word[with_sz:]
+        if len(word) + fullstrip > with_sz:
+            if 0 == with_sz or word[:with_sz] == pfx["with"]:
+                if 0 == len(pfx["replace"]):
+                    return word[with_sz:]
+                else:
+                    return pfx["replace"] + word[with_sz:]
+        return None
 
     @staticmethod
     def remove_suffix(word, sfx, fullstrip=1):
-        sz = len(word)
         with_sz = len(sfx["with"])
-        # check this !!!
-        if sz + fullstrip > with_sz:
-            if word.endswith(sfx["with"]):
+        if len(word) + fullstrip > with_sz:
+            if 0 == with_sz or word[-with_sz:] == sfx["with"]:
                 if 0 < with_sz:
-                    yield word[:-with_sz] + sfx["replace"]
+                    return word[:-with_sz] + sfx["replace"]
                 else:
-                    yield word + sfx["replace"]
+                    return word + sfx["replace"]
+        return None
 
     # ======================
     # implemented flags
@@ -186,9 +245,9 @@ class aff_mgr( object ):
                 int( parts[0] )
                 return
             except:
-                raise invalid_format( "AFF invalid REP [%s]", line )
+                raise invalid_format( "AFF invalid REP [%s]" % line )
         elif 2 != len( parts ):
-            raise invalid_format( "AFF invalid REP [%s]", line )
+            raise invalid_format( "AFF invalid REP [%s]" % line )
 
         # other REPs
         if parts[0][0] == "^":
@@ -204,7 +263,7 @@ class aff_mgr( object ):
         # we assume it is one character
         if 1 != len( parts[0] ):
             raise not_implemented_yet( "%s in unexpected format [%s]" % (tag, line) )
-        aflag = ord( parts[0] )
+        aflag = parts[0]
         if aflag in d:
             raise invalid_format( "%s has invalid format [%s] - rule already defined" % (tag, line) )
         #
@@ -225,7 +284,7 @@ class aff_mgr( object ):
             if 5 > len( parts ):
                 raise invalid_format( "%s invalid format [%s]" % (tag, l) )
             # must match FLAG from the first line
-            aflag_tmp = ord( parts[1] )
+            aflag_tmp = parts[1]
             if aflag != aflag_tmp:
                 raise invalid_format( "%s invalid format [%s] - FLAGS do not match" % (tag, l) )
 
@@ -233,8 +292,8 @@ class aff_mgr( object ):
             wwith = parts[3] if "0" != parts[3] else ""
 
             affix_flag_part = None
-            slash_in_affix = wwith.rfind( "/" )
-            if 0 <= slash_in_affix:
+            if "/" in wwith:
+                slash_in_affix = wwith.rfind( "/" )
                 affix_flag_part = wwith[slash_in_affix + 1:]
                 wwith = wwith[:slash_in_affix]
             condition = parts[4]
@@ -245,12 +304,16 @@ class aff_mgr( object ):
             replace = self.remove_ignore(replace)
 
             # see affentry.cxx at the end of the file
-            d[aflag]["rules"].append( {
+            fx = {
+                "aflag": aflag,
                 "replace": replace,
                 "with": wwith,
                 "append_flag": affix_flag_part,
                 "condition": re.compile( condition_re % condition, re.U ),
-            } )
+            }
+            if not crossproduct:
+                fx["not_combine"] = True
+            d[aflag]["rules"].append(fx)
 
     def _parse_PFX(self, line, fin, *args):
         self.parse_FX( line, fin, self._pfxs, "^%s", "PFX" )

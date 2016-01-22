@@ -3,7 +3,7 @@
 # pylint: disable=
 import codecs
 import os
-import re
+import bisect
 import logging
 
 _logger = logging.getLogger("pyspell")
@@ -21,6 +21,7 @@ class dic_mgr(object):
         self._d = {}
         self._aff = aff
         self._flag_decoder = self._aff.flag_decoder()
+        self._empty_entry = dic_mgr.entry(affixes=())
 
     def parse(self):
         if not os.path.exists(self._fs):
@@ -28,9 +29,9 @@ class dic_mgr(object):
 
         with codecs.open(self._fs, mode="r+", encoding="utf-8") as fin:
             size = -1
-            for l in fin:
+            for l in fin.readlines():
                 l = line_strip(l)
-                if 1 != len(l.split()):
+                if -1 != l.find(" "):
                     # TODO!!! st:|
                     _logger.warn(u"DIC has invalid line, skipping - [%s]" % l)
                     continue
@@ -41,54 +42,64 @@ class dic_mgr(object):
                     size = int(l)
                     continue
 
-                parts = l.split("/")
-                # no affix
-                if 1 == len(parts):
-                    self._d[parts[0]] = [self.entry()]
+                # .rfind seems the same
+                pos = l.find(u"/")
+                if -1 != pos:
+                    word = l[:pos]
+                    flags = l[pos + 1:]
+                    # affix
+                    affixes = self._flag_decoder(flags)
+                    e = dic_mgr.entry(affixes=affixes)
+                    if word not in self._d:
+                        self._d[word] = [e]
+                    else:
+                        self._d[word].append(e)
+                else:
+                    # no affix
+                    self._d[l] = [self._empty_entry]
                     continue
-                # affix
-                affixes = self._flag_decoder(parts[1])
-                if parts[0] not in self._d:
-                    self._d[parts[0]] = []
-                self._d[parts[0]].append(self.entry(affixes=affixes))
 
         # we can optimise search by grouping similar prefixes
 
     @staticmethod
-    def entry(affixes=None):
-        return {
-            "affixes": affixes or (),
-        }
+    def entry(affixes):
+        return { "affixes": u''.join(sorted(affixes)) }
 
     def unmunch_words(self, unique=True):
         for rootword, ds in self._d.iteritems():
             for d in ds:
-                if d["affixes"] is None:
+                if 0 == len(d["affixes"]):
                     yield rootword
                 else:
                     words = []
 
                     # get all suffix versions
                     for affix_entry in d["affixes"]:
-                        fx = self._aff.get_sfx(affix_entry)
-                        if fx is not None:
-                            for expanded in self._aff.apply_suffix(rootword, fx):
-                                words.append(expanded)
+                        fx_entry = self._aff.get_sfx(affix_entry)
+                        if fx_entry is None:
+                            continue
+                        for expanded in self._aff.apply_suffix(rootword, fx_entry):
+                            words.append(expanded)
 
                     # get all suffix + prefix versions
                     for affix_rule in d["affixes"]:
-                        fx = self._aff.get_pfx(affix_rule)
-                        if fx is not None and fx["combined"]:
+                        fx_entry = self._aff.get_pfx(affix_rule)
+                        if fx_entry is None:
+                            continue
+                        if fx_entry is not None and fx_entry["combined"]:
                             sz = len(words)
                             for i in range(sz):
-                                for expanded in self._aff.apply_prefix(words[i], fx):
-                                    words.append(expanded)
+                                for fx in fx_entry["rules"]:
+                                    for expanded in self._aff.apply_prefix(words[i], fx):
+                                        words.append(expanded)
 
                     words.insert(0, rootword)
                     # get all prefix
                     for affix_rule in d["affixes"]:
-                        fx = self._aff.get_pfx(affix_rule)
-                        if fx is not None:
+                        fx_entry = self._aff.get_pfx(affix_rule)
+                        if fx_entry is None:
+                            continue
+                        for fx in fx_entry["rules"]:
                             for expanded in self._aff.apply_prefix(rootword, fx):
                                 words.append(expanded)
 
@@ -106,3 +117,20 @@ class dic_mgr(object):
     def iteritems(self):
         for k, v in self._d.iteritems():
             yield k, v
+
+    @staticmethod
+    def has_affixes(word_ds, affixes):
+        for word_d in word_ds:
+            found = True
+            for aff in affixes:
+                if aff is None:
+                    continue
+                word_affs = word_d["affixes"]
+                #if aff not in word_affs:
+                i = bisect.bisect_left(word_affs, aff)
+                if i == len(word_affs) or word_affs[i] != aff:
+                    found = False
+                    break
+            if found:
+                return True
+        return False
