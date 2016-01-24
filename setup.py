@@ -24,13 +24,13 @@ def read(*names, **kwargs):
 setup(
     name='pyspell',
     version='0.1.0',
-    license='!!!',
+    license='MIT',
     description='Python *spell port.',
     long_description='%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.md')),
     ),
     author='jm',
-    author_email='jm@',
+    author_email='',
     url='',
     packages=find_packages('src'),
     package_dir={'': 'src'},
@@ -38,25 +38,17 @@ setup(
     include_package_data=True,
     zip_safe=False,
     classifiers=[
-        # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: !!!',
         'Operating System :: Unix',
         'Operating System :: POSIX',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python :: 2.7',
     ],
     keywords=[
-        # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     install_requires=[
-        'click',
     ],
     extras_require={
     },
     entry_points={
-        'console_scripts': [
-            'nameless = nameless.cli:main',
-        ]
     },
 )

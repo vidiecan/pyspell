@@ -1,17 +1,10 @@
 # coding=utf-8
-# See main file for licence
-# pylint: disable=
+
 import re
 
 
-def line_strip(line):
-    line = line.rstrip( )
-    # faster than .rfind()
-    if "#" in line:
-        pos = line.rfind("#")
-        return line[:pos]
-    return line
-
+# exceptions
+#
 
 class missing_file(Exception):
 
@@ -37,6 +30,19 @@ class invalid_format(Exception):
         super(invalid_format, self).__init__(message)
 
 
+# text handling
+#
+
+def line_strip(line):
+    line = line.rstrip( )
+    # faster than .rfind()
+    if "#" in line:
+        pos = line.rfind("#")
+        return line[:pos]
+    return line
+
+
+# slovak alphabet
 alphabet = u"aáäbcčdďeéfghiíjklĺľmnňoóôpqrŕsštťuúvwxyýzž"
 alphabet += alphabet.upper()
 valid_chars_re = re.compile(u"^[%s]+$" % alphabet, re.U)
@@ -47,3 +53,20 @@ def non_sk_words(w):
         return True
     return False
 
+
+def trie_like_set(d, key, value):
+    """ Trie like insert. """
+    if 0 == len(key):
+        d.setdefault("", []).append(value)
+    else:
+        v = d.setdefault(key[0], {})
+        trie_like_set(v, key[1:], value)
+
+
+def trie_like_get(d, key, ret):
+    """ Trie like search - because of performance. """
+    if 0 != len(key):
+        if "" in d:
+            ret += d[""]
+        if key[0] in d:
+            trie_like_get(d[key[0]], key[1:], ret)

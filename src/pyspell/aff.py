@@ -1,14 +1,15 @@
 # coding=utf-8
-# See main file for licence
-# pylint: disable=
+# pylint: disable=W0612,W0613
+
 import codecs
 import os
 import re
-from ._utils import missing_file, not_implemented_yet, deprecated, invalid_format, line_strip
-from collections import defaultdict
+from ._utils import missing_file, not_implemented_yet, deprecated, invalid_format, line_strip, \
+    trie_like_set, trie_like_get
 
 
 def decode_default(x):
+    """ Supported decoding. """
     return x
     #return map(ord, x)
     #return [ord(c) for c in x]
@@ -17,7 +18,13 @@ def decode_default(x):
 # noinspection PyMethodMayBeStatic
 class aff_mgr( object ):
     """
-        Expect UTF-8 encoding!
+        Rules definition with several performance optimisations.
+
+        Only a subset of the functionality is implemented.
+        An exception is throws if we detect the usage of an unsupported
+        keyword.
+
+        Dictionary should be in UTF-8 encoding.
     """
 
     def __init__(self, file_str):
@@ -33,12 +40,15 @@ class aff_mgr( object ):
         self._needaffix = None
         self._flagdecoder = decode_default
 
+    def __str__(self):
+        return "%s (#pfxs:%d #sfxs:%d)" % (self.__class__, len( self._pfxs ), len( self._sfxs ))
+
     def flag_decoder(self):
         return self._flagdecoder
 
     def parse(self):
         if not os.path.exists( self._fs ):
-            raise missing_file( "aff file missing" )
+            raise missing_file(".aff file missing [%s]" % self._fs)
 
         with codecs.open( self._fs, mode="r+", encoding="utf-8" ) as fin:
             for l in fin:
@@ -50,28 +60,19 @@ class aff_mgr( object ):
                 if hasattr( self, meth ):
                     # call parse_*WORD*
                     getattr( self, meth )( first[1], fin )
-
                 else:
                     if 0 == len(first) or 0 == len(first[0]) or first[0][0] == "#":
                         continue
-
                     # several keywords
                     if first[0].startswith( "COMPOUND" ):
                         raise not_implemented_yet( "I do not know COMPOUND*" )
                     if first[0].startswith( "CHECKCOMPOUND" ):
                         raise not_implemented_yet( "I do not know CHECKCOMPOUND*" )
-
                     raise not_implemented_yet( "I do not know [%s]" % first[0] )
-            # seems that this is faster than arbitrary order
-            from collections import OrderedDict
-            self._sfxs = OrderedDict(sorted(self._sfxs.items(), key=lambda t: len(t[1]["rules"])))
-            self._pfxs = OrderedDict(sorted(self._pfxs.items(), key=lambda t: len(t[1]["rules"])))
+
             # we can optimise search by grouping similar prefixes
             self.pfxs_rules_for_search()
             self.sfxs_rules_for_search()
-
-    def __str__(self):
-        return "%s (#pfxs:%d #sfxs:%d)" % (self.__class__, len( self._pfxs ), len( self._sfxs ))
 
     def sfxs_rules_for_search(self):
         for sfx_key, sfx_entry in self.sfxs():
@@ -79,24 +80,8 @@ class aff_mgr( object ):
                 if 0 == len(sfx["with"]):
                     self._sfxs_rules.setdefault("", []).append(sfx)
                 else:
-                    aff_mgr._assign_trie_like(self._sfxs_rules, sfx["with"][::-1], sfx)
+                    trie_like_set(self._sfxs_rules, sfx["with"][::-1], sfx)
         return
-
-    @staticmethod
-    def _assign_trie_like(d, key, value):
-        if 0 == len(key):
-            d.setdefault("", []).append(value)
-        else:
-            v = d.setdefault(key[0], {})
-            aff_mgr._assign_trie_like(v, key[1:], value)
-
-    @staticmethod
-    def _get_values_trie_like(d, key, ret):
-        if 0 != len(key):
-            if "" in d:
-                ret += d[""]
-            if key[0] in d:
-                aff_mgr._get_values_trie_like(d[key[0]], key[1:], ret)
 
     def pfxs_rules_for_search(self):
         for pfx_key, pfx_entry in self.pfxs():
@@ -104,13 +89,13 @@ class aff_mgr( object ):
                 if 0 == len(pfx["with"]):
                     self._pfxs_rules.setdefault("", []).append(pfx)
                 else:
-                    aff_mgr._assign_trie_like(self._pfxs_rules, pfx["with"], pfx)
+                    trie_like_set(self._pfxs_rules, pfx["with"], pfx)
         return
 
     def remove_ignore(self, l):
         if 0 == len( self._ignore ):
             return l
-        translation_table = dict.fromkeys( map( ord, self._ignore ), None )
+        translation_table = dict.fromkeys( [ord(x) for x in ord, self._ignore], None )
         return l.translate( translation_table )
 
     def sfxs(self):
@@ -118,7 +103,7 @@ class aff_mgr( object ):
 
     def sfxs_rules(self, word_filter):
         ret = []
-        self._get_values_trie_like(self._sfxs_rules, word_filter[::-1], ret)
+        trie_like_get(self._sfxs_rules, word_filter[::-1], ret)
         return ret
 
     def pfxs(self):
@@ -126,7 +111,7 @@ class aff_mgr( object ):
 
     def pfxs_rules(self, word_filter):
         ret = []
-        self._get_values_trie_like(self._pfxs_rules, word_filter, ret)
+        trie_like_get(self._pfxs_rules, word_filter, ret)
         return ret
 
     def get_sfx(self, key):

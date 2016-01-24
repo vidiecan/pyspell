@@ -16,13 +16,6 @@ class test_spelling( test.test_case ):
         )
         s.init()
 
-        #
-        for word in (
-            u"dier",
-            u"ciev",
-        ):
-            self.assertTrue(s.check(word))
-
         with codecs.open(self.dic_file(), mode="r+", encoding="utf-8") as fin:
             fin.next()
             for i, l in enumerate(fin):
@@ -36,7 +29,7 @@ class test_spelling( test.test_case ):
                     self.log("done [%d]" % i)
 
     def test_text( self ):
-        """ test_spell_origin """
+        """ test_text """
         from pyspell import speller
         s = speller(
             self.aff_file("mini"),
@@ -106,9 +99,9 @@ class test_spelling( test.test_case ):
 
         bad = set()
         with codecs.open(
-                self.file("hunspell_results/wiki-words.txt"),
-                mode="r+",
-                encoding="utf-8"
+            self.file("hunspell_results/wiki-words.txt"),
+            mode="r+",
+            encoding="utf-8"
         ) as fin_words:
             for word in fin_words:
                 word = word.strip()
@@ -117,9 +110,9 @@ class test_spelling( test.test_case ):
                     bad.add(word)
         bad_expected = set()
         with codecs.open(
-                self.file("hunspell_results/wiki-words.txt.bad.results"),
-                mode="r+",
-                encoding="utf-8"
+            self.file("hunspell_results/wiki-words.txt.bad.results"),
+            mode="r+",
+            encoding="utf-8"
         ) as fin_results:
             for word in fin_results:
                 bad_expected.add(word.strip())
@@ -129,4 +122,3 @@ class test_spelling( test.test_case ):
         diff2 = bad - bad_expected
         print diff2
         self.assertTrue(0 == len(diff2))
-

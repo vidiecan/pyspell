@@ -6,7 +6,10 @@ import unittest
 import time
 import testsettings
 import sys
-src_dir = os.path.join(testsettings.settings["start_dir"], testsettings.settings["path_to_project"])
+src_dir = os.path.join(
+    testsettings.settings["start_dir"],
+    testsettings.settings["path_to_project"]
+)
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir )
 

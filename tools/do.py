@@ -11,7 +11,7 @@ from collections import defaultdict
 
 _logger = None
 
-__this_dir = os.path.dirname( os.path.abspath(__file__) )
+__this_dir = os.path.dirname(os.path.abspath(__file__))
 __log_dir = os.path.join(__this_dir, "__logs")
 
 settings = {
@@ -59,6 +59,7 @@ def help(env):
 
 
 def parse_settings():
+    """ Parses the global setting json and updates the local settings. """
     env = settings
     if os.path.exists(env["settings"]):
         settingsd = json.load(open(env["settings"], "r+"))
@@ -76,7 +77,7 @@ def parse_command_line():
     try:
         options = env["runnable"].keys()
         input_options = sys.argv[1:]
-        opts, _ = getopt.getopt( input_options, "", options )
+        opts, _ = getopt.getopt(input_options, "", options)
     except getopt.GetoptError, e:
         pass
 
@@ -90,7 +91,7 @@ def parse_command_line():
 
 
 # ========================
-#
+# Helpers
 # ========================
 
 min_occurrences = settings["tasks"]["valid-words"]
@@ -108,13 +109,28 @@ def _is_important_valid_word(word, f, non_sk_words):
     return False, None
 
 
+def _init_logging(env, what_to_do):
+    import logging.config
+    if "log_dir" in env["logger"]:
+        if not os.path.exists(env["logger"]["log_dir"]):
+            try:
+                os.makedirs(env["logger"]["log_dir"])
+            except Exception, e:
+                pass
+    env["logger"]["handlers"]["file"]["filename"] = \
+        env["logger"]["handlers"]["file"]["filename"] % (
+            time.strftime("%Y-%m-%d-%H.%M.%S"), what_to_do
+        )
+    logging.config.dictConfig(env["logger"])
+
+
 # ========================
-#
+# Real functionality
 # ========================
 
 def unknown_from_wiki(env):
     """
-        ...
+        How many words do we know from a list of most used ones?
     """
     sys.path.insert(0, os.path.join(env["start_dir"], env["src_dir"]))
 
@@ -122,11 +138,11 @@ def unknown_from_wiki(env):
         time_arr.append(time.time())
         return "in [%.2fs] .. done [%8d] words ... [%5d][%.2f%%] not found ... " \
                "[%5d][%.2f%%] not found lower" % (
-            (time_arr[-1] - time_arr[-2]),
-            cnt,
-            cnt_nf, (100. * cnt_nf / cnt),
-            cnt_nf - cnt_nf_f_cap, (100. * (cnt_nf - cnt_nf_f_cap) / cnt)
-        )
+                   (time_arr[-1] - time_arr[-2]),
+                   cnt,
+                   cnt_nf, (100. * cnt_nf / cnt),
+                   cnt_nf - cnt_nf_f_cap, (100. * (cnt_nf - cnt_nf_f_cap) / cnt)
+               )
 
     dictionaries = env["input"]["dictionaries"]
     aff_file = os.path.join(env["start_dir"], env["input"]["dir"], dictionaries + ".aff")
@@ -160,13 +176,12 @@ def unknown_from_wiki(env):
             for l in fin:
                 pos += 1
                 l = l.strip()
-                #l = u"štúdiach"
                 ret = s.check(l, ignorecase)
                 if ret is None:
                     not_found += 1
                     if l[0].isupper():
                         not_found_first_cap += 1
-                    #_logger.info(u"Not found: [%s]", l)
+                    # _logger.info(u"Not found: [%s]", l)
                     not_found_arr.append(l)
                     for i in range(100):
                         if 10000 < len(not_found_arr):
@@ -181,7 +196,9 @@ def unknown_from_wiki(env):
 
 def wiki_freqs(env):
     """
+        Gather the freqs of words from a wiki.
 
+        Note: not tested with larger wikis!
     """
     from pyspell._utils import non_sk_words
 
@@ -211,7 +228,6 @@ def wiki_freqs(env):
 
         _logger.info("Done [%d] words, ignored [%d] words", cnt_done, cnt_ignored)
 
-
     def _stats():
         check_length = range(6, 12)
         d = {}
@@ -230,9 +246,12 @@ def wiki_freqs(env):
 
     _words()
 
+
 def wiki_stats(env):
     """
-        ...
+        Basic statistics from a wiki.
+
+        Note: not tested with larger wikis!
     """
     from pyspell._utils import non_sk_words
     from simplewiki import wiki
@@ -254,8 +273,8 @@ def wiki_stats(env):
         if 0 == all_words % log_every_n:
             perc = round((100. * float(len(freqs))) / all_words, 3)
             _logger.info(
-                "done [%8d] words ... [%8d][%.2f%%] unique words ... [%5d] pages",
-                all_words, len(freqs), perc, page_id
+                    "done [%8d] words ... [%8d][%.2f%%] unique words ... [%5d] pages",
+                    all_words, len(freqs), perc, page_id
             )
 
     print "   # of all words: %6d" % all_words
@@ -291,7 +310,8 @@ def wiki_stats(env):
 
 def wiki_words(env):
     """
-        ...
+        Gather most used words according to a specific definition
+        Note: not tested with larger wikis!
     """
     from simplewiki import wiki
     from pyspell._utils import non_sk_words
@@ -360,20 +380,6 @@ def wiki_words(env):
             _logger.info("%10s: %2d", k, v)
 
 
-def init_logging(env, what_to_do):
-    import logging.config
-    if "log_dir" in env["logger"]:
-        if not os.path.exists( env["logger"]["log_dir"] ):
-            try:
-                os.makedirs( env["logger"]["log_dir"] )
-            except Exception, e:
-                pass
-    env["logger"]["handlers"]["file"]["filename"] = \
-        env["logger"]["handlers"]["file"]["filename"] % (
-            time.strftime( "%Y-%m-%d-%H.%M.%S" ), what_to_do
-        )
-    logging.config.dictConfig( env["logger"] )
-
 if __name__ == "__main__":
     settings["runnable"] = {
         "unknown-from-wiki": unknown_from_wiki,
@@ -383,11 +389,11 @@ if __name__ == "__main__":
     }
 
     what_to_do, env = parse_command_line()
-    init_logging(env, what_to_do.__name__)
+    _init_logging(env, what_to_do.__name__)
     _logger = logging.getLogger()
-    _logger.info( "Starting..." )
-    lasted = time.time( )
+    _logger.info("Starting...")
+    lasted = time.time()
     what_to_do(env)
 
-    lasted = time.time( ) - lasted
-    _logger.info( "Finished in [%.3fs]...", lasted )
+    lasted = time.time() - lasted
+    _logger.info("Finished in [%.3fs]...", lasted)

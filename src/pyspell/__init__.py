@@ -1,13 +1,20 @@
 # coding=utf-8
+
 import logging
 from .aff import aff_mgr
 from .dic import dic_mgr
 _logger = logging.getLogger("pyspell")
 
+__author__ = "Jozef (jm)"
+__license__ = "MIT"
+__version__ = "0.1.0"
+
 
 class speller(object):
     """
-
+        Speller abstraction over .dic and .aff files that
+        implements key functionality like checking if a word
+        is known.
     """
 
     def __init__(self, aff_file, dic_file):
@@ -18,38 +25,8 @@ class speller(object):
         self._aff.parse()
         self._dic.parse()
 
-    def AffixMgr_suffix_check(self, word, pfx_key=None):
-        for sfx in self._aff.sfxs_rules(word):
-            newword = aff_mgr.remove_suffix(word, sfx)
-            if newword is None:
-                continue
-            if sfx["condition"].search(newword):
-                word_ds = self._dic.get(newword, None)
-                if word_ds is None:
-                    continue
-                if dic_mgr.has_affixes(word_ds, (sfx["aflag"], pfx_key)):
-                    return newword
-        return None
-
-    def AffixMgr_prefix_check(self, word):
-        for pfx in self._aff.pfxs_rules(word):
-            repl_sz = len(pfx["replace"])
-            if 0 != repl_sz and word[:repl_sz] == pfx["replace"]:
-                continue
-            newword = aff_mgr.remove_prefix(word, pfx)
-            if newword is None:
-                continue
-            if pfx["condition"].search(newword):
-                word_ds = self._dic.get(newword, None)
-                if word_ds is not None:
-                    if dic_mgr.has_affixes(word_ds, (pfx["aflag"],)):
-                        return newword
-                if "not_combine" in pfx:
-                    continue
-                accepted_word = self.AffixMgr_suffix_check(newword, pfx["aflag"])
-                if accepted_word is not None:
-                    return accepted_word
-        return None
+    # api
+    #
 
     def check(self, word, ignorecase=False):
         word = self._aff.remove_ignore(word)
@@ -57,11 +34,11 @@ class speller(object):
         if word in self._dic:
             return word
 
-        accepted_word = self.AffixMgr_prefix_check(word)
+        accepted_word = self._prefix_check(word)
         if accepted_word is not None:
             return accepted_word
 
-        accepted_word = self.AffixMgr_suffix_check(word)
+        accepted_word = self._suffix_check(word)
         if accepted_word is not None:
             return accepted_word
 
@@ -102,9 +79,9 @@ class speller(object):
                             continue
                         if fx["replace"][-1] != p[-1]:
                             outputter(
-                                    u"invalid SFX replace [%s] - does not match condition [%s]" % (
-                                        fx["replace"], fx["condition"].pattern
-                                    )
+                                u"invalid SFX replace [%s] - does not match condition [%s]" % (
+                                    fx["replace"], fx["condition"].pattern
+                                )
                             )
         for fx_key, fx_entry in self._aff.pfxs():
             if fx_key not in d:
@@ -115,7 +92,42 @@ class speller(object):
                         p = fx["condition"].pattern
                         if fx["replace"][0] != p[0]:
                             outputter(
-                                    u"invalid PFX replace [%s] - does not match condition [%s]" % (
-                                        fx["replace"], fx["condition"].pattern
-                                    )
+                                u"invalid PFX replace [%s] - does not match condition [%s]" % (
+                                    fx["replace"], fx["condition"].pattern
+                                )
                             )
+    # helpers
+    #
+
+    def _suffix_check(self, word, pfx_key=None):
+        for sfx in self._aff.sfxs_rules(word):
+            newword = aff_mgr.remove_suffix(word, sfx)
+            if newword is None:
+                continue
+            if sfx["condition"].search(newword):
+                word_ds = self._dic.get(newword, None)
+                if word_ds is None:
+                    continue
+                if dic_mgr.has_affixes(word_ds, (sfx["aflag"], pfx_key)):
+                    return newword
+        return None
+
+    def _prefix_check(self, word):
+        for pfx in self._aff.pfxs_rules(word):
+            repl_sz = len(pfx["replace"])
+            if 0 != repl_sz and word[:repl_sz] == pfx["replace"]:
+                continue
+            newword = aff_mgr.remove_prefix(word, pfx)
+            if newword is None:
+                continue
+            if pfx["condition"].search(newword):
+                word_ds = self._dic.get(newword, None)
+                if word_ds is not None:
+                    if dic_mgr.has_affixes(word_ds, (pfx["aflag"],)):
+                        return newword
+                if "not_combine" in pfx:
+                    continue
+                accepted_word = self._suffix_check(newword, pfx["aflag"])
+                if accepted_word is not None:
+                    return accepted_word
+        return None
