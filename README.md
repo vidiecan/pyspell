@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/vidiecan/pyspell.svg?branch=master)](https://travis-ci.org/vidiecan/pyspell)
+
 pyspell
 =======
 
