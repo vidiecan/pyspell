@@ -4,7 +4,8 @@
   "input": {
     "dir": "data",
     "dictionaries": "hunspell-sk-20110228.sk_SK",
-    "wiki_xml": "skwiki-20151226-pages-articles.xml"
+    "wiki_xml": "skwiki-20151226-pages-articles.xml",
+    "morpho_glob": "morpho-*.txt"
   },
   "output": {
     "dir": "data",

@@ -281,7 +281,6 @@ def wiki_stats(env):
     print "# of unique words: %6d" % len(freqs)
     import heapq
     nth = 100
-    nth = 100
     too_few_occurrences = 20
     baseline = heapq.nlargest(nth, freqs.values())[-1]
     d = defaultdict(list)
@@ -380,12 +379,74 @@ def wiki_words(env):
             _logger.info("%10s: %2d", k, v)
 
 
+def morpho_parse(env):
+    """
+        Gather most used words according to a specific definition
+        Note: not tested with larger wikis!
+    """
+    import glob
+    from simplemorpho import morpho, word_forms
+
+    input_glob = os.path.join(
+            env["start_dir"],
+            env["input"]["dir"],
+            env["input"]["morpho_glob"]
+    )
+    for f in glob.glob(input_glob):
+        _logger.info(u"Working on [%s]", f)
+        m = morpho(f)
+        max_show = 0
+        m.parse(all_forms=True, max_process=max_show)
+
+        ##
+        if True:
+            sys.path.insert(0, os.path.join(env["start_dir"], env["src_dir"]))
+            dictionaries = env["input"]["dictionaries"]
+            aff_file = os.path.join(env["start_dir"], env["input"]["dir"], dictionaries + ".aff")
+            dic_file = os.path.join(env["start_dir"], env["input"]["dir"], dictionaries + ".dic")
+            from pyspell import speller
+            s = speller(aff_file, dic_file)
+            s.init()
+            pos = 0
+            for k in s._dic._d.keys():
+                if k.lower() not in m.all_forms():
+                    _logger.info(u"Word from .dic not found in ma [%s]", k)
+                    pos += 1
+            print "Not found words [%d out of %d]" % (pos, len(s._dic._d))
+
+
+
+        ##
+        uniq_rules = set()
+        uniq_rules_right = set()
+        for pos, (k, v) in enumerate(m.forms().iteritems()):
+            if 0 < max_show < pos:
+                break
+            #print u"%s: %s" % (k, u",".join(v.forms()))
+            #print v.rules()
+            r_strs = word_forms.rule_strs(v.rules())
+            uniq_rules |= set(r_strs)
+            uniq_rules_right |= set([x.split("->")[0] for x in r_strs])
+
+        msg = "All rules [%d], unique rules [%d], unique rules right [%d]" % (
+            pos, len(uniq_rules), len(uniq_rules_right)
+        )
+        print msg
+        for pos, r in enumerate(sorted(uniq_rules)):
+            if 1000 < pos:
+                break
+            print r
+        print msg
+
+
+
 if __name__ == "__main__":
     settings["runnable"] = {
         "unknown-from-wiki": unknown_from_wiki,
         "wiki-stats": wiki_stats,
         "wiki-words": wiki_words,
         "wiki-freqs": wiki_freqs,
+        "morpho": morpho_parse,
     }
 
     what_to_do, env = parse_command_line()
